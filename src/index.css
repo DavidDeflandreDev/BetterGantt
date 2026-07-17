@@ -1,0 +1,117 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap');
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Themed range slider — replaces the native OS-grey slider with something that matches the
+   app's dark theme. Track is always dark; the thumb picks up whatever `color` (text color)
+   utility class is set on the <input>, so different sliders can have different accent colors. */
+input[type='range'] {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 100%;
+  background: transparent;
+  cursor: pointer;
+}
+input[type='range']:focus {
+  outline: none;
+}
+input[type='range']::-webkit-slider-runnable-track {
+  height: 3px;
+  border-radius: 9999px;
+  background: #1e293b;
+  border: 1px solid rgba(59, 130, 246, 0.3);
+}
+input[type='range']::-moz-range-track {
+  height: 3px;
+  border-radius: 9999px;
+  background: #1e293b;
+  border: 1px solid rgba(59, 130, 246, 0.3);
+}
+input[type='range']::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 11px;
+  height: 11px;
+  border-radius: 9999px;
+  background: currentColor;
+  border: 2px solid #0f172a;
+  margin-top: -4.5px;
+  box-shadow: 0 0 0 1px rgba(59, 130, 246, 0.5), 0 1px 3px rgba(0, 0, 0, 0.6);
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+input[type='range']::-moz-range-thumb {
+  width: 11px;
+  height: 11px;
+  border-radius: 9999px;
+  background: currentColor;
+  border: 2px solid #0f172a;
+  box-shadow: 0 0 0 1px rgba(59, 130, 246, 0.5), 0 1px 3px rgba(0, 0, 0, 0.6);
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+input[type='range']:hover::-webkit-slider-thumb,
+input[type='range']:active::-webkit-slider-thumb {
+  transform: scale(1.25);
+}
+input[type='range']:hover::-moz-range-thumb,
+input[type='range']:active::-moz-range-thumb {
+  transform: scale(1.25);
+}
+input[type='range']:focus::-webkit-slider-thumb {
+  box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.35), 0 1px 3px rgba(0, 0, 0, 0.6);
+}
+input[type='range']:focus::-moz-range-thumb {
+  box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.35), 0 1px 3px rgba(0, 0, 0, 0.6);
+}
+input[type='range']:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Thin, dark/blue-themed scrollbars everywhere — replaces the default chunky OS-grey
+   scrollbars (the two vertical ones on the task list + timeline, and the horizontal one
+   under the timeline) with something that matches the rest of the app. */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: #334155 transparent;
+}
+*::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+*::-webkit-scrollbar-track {
+  background: transparent;
+}
+*::-webkit-scrollbar-thumb {
+  background-color: #334155;
+  border-radius: 9999px;
+  border: 2px solid transparent;
+  background-clip: padding-box;
+}
+*::-webkit-scrollbar-thumb:hover {
+  background-color: #3b82f6;
+}
+*::-webkit-scrollbar-corner {
+  background: transparent;
+}
+
+@media print {
+  body {
+    background: white !important;
+    color: #0f172a !important;
+  }
+  .no-print {
+    display: none !important;
+  }
+  .print-only {
+    display: block !important;
+    position: absolute !important;
+    left: 0 !important;
+    top: 0 !important;
+    width: 100% !important;
+    height: auto !important;
+    background: white !important;
+    color: #0f172a !important;
+    overflow: visible !important;
+  }
+}
