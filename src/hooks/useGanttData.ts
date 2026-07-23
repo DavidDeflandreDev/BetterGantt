@@ -7,7 +7,7 @@ import { useEffect, useMemo, useState, type ChangeEvent, type MouseEvent } from 
 import { Task, Resource, ProjectStats, SavedProject } from '../types';
 import { parseDate, addDays, calculateCPM, autoScheduleTasks, differenceInDays, formatDate } from '../utils/cpm';
 import { parseGanttXml } from '../components/GanttParser';
-import { computeMonthLabels, computeScreenDateRange } from '../utils/timeline';
+import { computeMonthLabels, computeYearLabels, computeScreenDateRange } from '../utils/timeline';
 import { computeDepthMap, buildHierarchicalOrder, countHiddenByCollapse, isSameOrDescendantOf, reorderTask, ReorderTarget } from '../utils/taskHierarchy';
 import { assignMilestoneColors } from '../utils/milestoneColors';
 import { TimelineZoom, ZOOM_DAY_WIDTH, suggestZoomForSpan } from '../components/timeline/constants';
@@ -170,12 +170,18 @@ export function useGanttData() {
   }, [tasks, cpmResults]);
 
   const timelineDates = useMemo(() => computeScreenDateRange(tasks), [tasks]);
-  const monthLabels = useMemo(() => computeMonthLabels(timelineDates), [timelineDates]);
   // 'Auto' just picks whichever fixed tier (jour/semaine/mois/trimestre/année) best fits the
   // project's actual span — no continuous per-pixel computation, which used to produce
   // unusable sub-pixel day widths on multi-year projects.
   const effectiveZoom = zoom === 'auto' ? suggestZoomForSpan(timelineDates.length) : zoom;
   const dayWidth = ZOOM_DAY_WIDTH[effectiveZoom];
+  // The 'année' tier zooms out so far that a month-by-month header is just visual noise (dozens
+  // of tiny slivers) — group by year instead once that tier is active, same idea as the 'jour'
+  // tier grouping by month instead of by day.
+  const monthLabels = useMemo(
+    () => (effectiveZoom === 'year' ? computeYearLabels(timelineDates) : computeMonthLabels(timelineDates)),
+    [timelineDates, effectiveZoom]
+  );
 
   const todayIndex = useMemo(() => {
     return differenceInDays(parseDate(formatDate(new Date())), timelineDates[0]);
@@ -362,7 +368,7 @@ export function useGanttData() {
   function handleImportGanttFile(text: string, filename: string): 'committed' | 'pending' | 'error' {
     try {
       const { name, tasks: parsedTasks, resources: parsedResources } = parseGanttXml(text);
-      const finalName = name === 'Projet Gantt Importé' && filename ? filename.replace(/\.gantt$/i, '') : name;
+      const finalName = name === 'Projet Gantt Importé' && filename ? filename.replace(/\.(gan|gantt)$/i, '') : name;
 
       if (parsedTasks.length > HEAVY_IMPORT_TASK_THRESHOLD) {
         const dates = computeScreenDateRange(parsedTasks);
@@ -519,6 +525,7 @@ export function useGanttData() {
 
     zoom,
     setZoom,
+    effectiveZoom,
     dayWidth,
 
     hasFolders,

@@ -94,7 +94,7 @@ function parseTasksRecursively(
 }
 
 /**
- * Parses GanttProject .gantt XML file text content
+ * Parses GanttProject .gan XML file text content
  */
 export function parseGanttXml(xmlText: string): { name: string; tasks: Task[]; resources: Resource[] } {
   const parser = new DOMParser();
@@ -103,7 +103,7 @@ export function parseGanttXml(xmlText: string): { name: string; tasks: Task[]; r
   // Check parsing errors
   const parseError = xmlDoc.getElementsByTagName('parsererror');
   if (parseError.length > 0) {
-    throw new Error('Fichier .gantt corrompu ou format XML invalide.');
+    throw new Error('Fichier .gan corrompu ou format XML invalide.');
   }
 
   // 1. Get Project Title

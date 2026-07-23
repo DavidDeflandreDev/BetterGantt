@@ -68,7 +68,7 @@ export default function HomeScreen({
           </h2>
 
           <p className="text-slate-400 text-sm leading-relaxed text-left">
-            Glissez vos fichiers de sauvegarde <span className="font-mono text-blue-300">.gantt</span> standards dans l'application pour les transformer instantanément en superbes diagrammes interactifs épurés. Choisissez individuellement d'afficher uniquement les tâches stratégiques, filtrez par dossiers et générez de magnifiques rapports PDF corporatifs.
+            Glissez vos fichiers de sauvegarde <span className="font-mono text-blue-300">.gan</span> standards dans l'application pour les transformer instantanément en superbes diagrammes interactifs épurés. Choisissez individuellement d'afficher uniquement les tâches stratégiques, filtrez par dossiers et générez de magnifiques rapports PDF corporatifs.
           </p>
 
           {/* DRAG AND DROP ZONE */}
@@ -85,7 +85,7 @@ export default function HomeScreen({
             <input
               type="file"
               id="file-gantt-input"
-              accept=".gantt"
+              accept=".gan,.gantt"
               onChange={e => {
                 if (e.target.files && e.target.files[0]) {
                   readGanttFile(e.target.files[0], onImportGanttFile);
@@ -98,7 +98,7 @@ export default function HomeScreen({
                 <Upload className="h-6 w-6" />
               </div>
               <div>
-                <p className="text-sm font-bold text-white">Glissez-déposez un fichier .gantt ici</p>
+                <p className="text-sm font-bold text-white">Glissez-déposez un fichier .gan ici</p>
                 <p className="text-[11px] text-slate-500 mt-1">ou cliquez pour explorer vos fichiers locaux</p>
               </div>
               <div className="text-[9px] bg-slate-800 hover:bg-slate-700 text-slate-400 px-2.5 py-1 rounded-md max-w-xs mx-auto border border-slate-700/30">
@@ -109,7 +109,7 @@ export default function HomeScreen({
 
           {/* Quick specifications info card */}
           <div className="bg-slate-900/60 rounded-xl p-4 border border-slate-800/80 text-xs text-slate-400 space-y-1.5 leading-relaxed text-left">
-            <div className="font-bold text-slate-300">Quels éléments sont lus lors du décodage .gantt ?</div>
+            <div className="font-bold text-slate-300">Quels éléments sont lus lors du décodage .gan ?</div>
             <div>• <b>Hiérarchie complète</b> : structure de dossiers de tâches, jalons et chemins d'adjacence parents-enfants.</div>
             <div>• <b>Arbre temporel</b> : calcul des dates de début, durées de réalisation et progressions.</div>
             <div>• <b>Dépendances</b> : tous les liens d'antériorités du chemin critique.</div>

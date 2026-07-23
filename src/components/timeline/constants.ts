@@ -21,10 +21,10 @@ export const ZOOM_DAY_WIDTH: Record<TimelineZoom, number> = {
   month: 7,
   quarter: 2.4,
   // Deliberately NOT "shrink everything to fit the screen" — that's what made multi-year
-  // projects unreadable (dozens of months crammed into one view). 3.3px/day puts roughly one
-  // calendar year in a typical viewport width, with the rest reachable by scrolling sideways,
+  // projects unreadable (dozens of months crammed into one view). 1.65px/day puts roughly two
+  // calendar years in a typical viewport width, with the rest reachable by scrolling sideways,
   // same as every other tier.
-  year: 3.3,
+  year: 1.65,
 };
 
 export const ZOOM_LABELS: Record<TimelineZoom, string> = {

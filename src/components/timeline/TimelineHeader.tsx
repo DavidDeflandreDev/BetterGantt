@@ -11,9 +11,13 @@ interface TimelineHeaderProps {
   timelineDates: Date[];
   todayIndex: number;
   dayWidth: number;
+  /** True when the top band groups by year (the 'année' zoom tier) rather than by month —
+   * the day row's tick marks should then fall on year boundaries instead of every month start,
+   * otherwise a decade-long view gets a tick every month for no reason. */
+  isYearGrouped: boolean;
 }
 
-export default function TimelineHeader({ monthLabels, timelineDates, todayIndex, dayWidth }: TimelineHeaderProps) {
+export default function TimelineHeader({ monthLabels, timelineDates, todayIndex, dayWidth, isYearGrouped }: TimelineHeaderProps) {
   const showDayText = dayWidth >= DAY_TEXT_MIN_WIDTH;
 
   return (
@@ -36,7 +40,9 @@ export default function TimelineHeader({ monthLabels, timelineDates, todayIndex,
         {timelineDates.map((date, idx) => {
           const isWeekend = date.getUTCDay() === 0 || date.getUTCDay() === 6;
           const isToday = idx === todayIndex;
-          const isMonthStart = date.getUTCDate() === 1;
+          const isMonthStart = isYearGrouped
+            ? date.getUTCMonth() === 0 && date.getUTCDate() === 1
+            : date.getUTCDate() === 1;
 
           return (
             <div

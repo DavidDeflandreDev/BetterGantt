@@ -8,6 +8,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import { Download, Printer, RefreshCw, X } from 'lucide-react';
 import { Task, Resource } from '../types';
 import { CPMResult } from '../utils/cpm';
+import { FixedTimelineZoom } from './timeline/constants';
 import { exportGanttPdf, PdfLayout, PdfOrientation } from '../utils/pdfExport';
 import GanttPrintView, { PRINT_LABEL_COL_WIDTH, PRINT_TOP_BAND_HEIGHT } from './GanttPrintView';
 
@@ -23,6 +24,10 @@ interface ExportModalProps {
   highlightCriticalPath: boolean;
   onToggleCriticalPath: () => void;
   onToggleTaskSelection: (id: string) => void;
+  /** The zoom tier currently selected on the main diagram ('auto' already resolved to a fixed
+   * tier) — the export mirrors that granularity (day detail, month bands, or year bands)
+   * instead of deciding it independently from the export's own pixel width. */
+  zoomTier: FixedTimelineZoom;
 }
 
 export default function ExportModal({
@@ -37,6 +42,7 @@ export default function ExportModal({
   highlightCriticalPath,
   onToggleCriticalPath,
   onToggleTaskSelection,
+  zoomTier,
 }: ExportModalProps) {
   const [pdfLayout, setPdfLayout] = useState<PdfLayout>('a4-single');
   const [pdfOrientation, setPdfOrientation] = useState<PdfOrientation>('landscape');
@@ -221,6 +227,7 @@ export default function ExportModal({
                     highlightCriticalPath={highlightCriticalPath}
                     taskDepthById={taskDepthById}
                     orientation={pdfOrientation}
+                    zoomTier={zoomTier}
                   />
                 </div>
               </div>

@@ -23,6 +23,7 @@ interface GanttTimelineProps {
   onSelectTask: (id: string) => void;
   timelineDates: Date[];
   monthLabels: MonthLabel[];
+  isYearGrouped: boolean;
   todayIndex: number;
   visibleTasksCount: number;
   displayLimit: number;
@@ -44,6 +45,7 @@ export default function GanttTimeline({
   onSelectTask,
   timelineDates,
   monthLabels,
+  isYearGrouped,
   todayIndex,
   visibleTasksCount,
   displayLimit,
@@ -139,7 +141,13 @@ export default function GanttTimeline({
 
       <div className="flex-1 overflow-auto relative bg-slate-900/40" id="gantt-panel-scheduler-viewport" ref={scrollViewportRef}>
         <div className="relative" style={{ width: `${timelineDates.length * dayWidth}px`, minHeight: '100%' }}>
-          <TimelineHeader monthLabels={monthLabels} timelineDates={timelineDates} todayIndex={todayIndex} dayWidth={dayWidth} />
+          <TimelineHeader
+            monthLabels={monthLabels}
+            timelineDates={timelineDates}
+            todayIndex={todayIndex}
+            dayWidth={dayWidth}
+            isYearGrouped={isYearGrouped}
+          />
 
           {/* WEEKEND COLUMNS OVERLAY BACKGROUND HIGHLIGHTS */}
           <div className="pointer-events-none absolute top-20 bottom-0 left-0 right-0 flex">

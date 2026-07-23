@@ -1,7 +1,7 @@
 # BetterGantt
 
 Visualiseur et exporteur de diagrammes de Gantt. Appli 100% front-end (aucune base de données,
-aucun backend) : on importe un fichier `.gantt` (GanttProject) ou un export JSON BetterGantt,
+aucun backend) : on importe un fichier `.gan` (GanttProject) ou un export JSON BetterGantt,
 on retouche les tâches et les couleurs, et on exporte un PDF propre (A4 une page ou multi-pages,
 portrait ou paysage).
 

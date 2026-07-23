@@ -22,9 +22,28 @@ export interface ExportGanttPdfOptions {
 }
 
 const CSS_PX_PER_MM = 96 / 25.4;
-const CAPTURE_SCALE = 3; // renders at 3x for crisp text/lines in the PDF
+// 2x is already sharper than a typical retina screen for this kind of flat, text-and-shapes
+// diagram — 3x was needlessly "4K"-grade and, combined with lossless PNG, produced multi-tens-
+// of-MB files even for a handful of tasks. JPEG compresses this flat-color content far better
+// than PNG with no visible quality loss at this resolution.
+const CAPTURE_SCALE = 2;
+// High enough that JPEG's chroma subsampling doesn't blur the edges of small text (which can
+// look like overlapping/smeared glyphs at 9-11px) — still far smaller than lossless PNG.
+const JPEG_QUALITY = 0.95;
 
 async function captureElement(el: HTMLElement) {
+  // Make sure every @font-face the page uses (e.g. the Inter font loaded for the rest of the
+  // app) has actually finished loading before html2canvas measures/rasterizes text — capturing
+  // mid-load is a well-known way to get mismatched glyph widths (and visually overlapping text)
+  // that never shows up in the live DOM, only in the raster snapshot.
+  if (typeof document !== 'undefined' && document.fonts && document.fonts.ready) {
+    try {
+      await document.fonts.ready;
+    } catch {
+      // Ignore — worst case we capture without the guarantee, same as before this change.
+    }
+  }
+
   return html2canvas(el, {
     scale: CAPTURE_SCALE,
     backgroundColor: '#ffffff',
@@ -68,7 +87,7 @@ export async function exportGanttPdf(opts: ExportGanttPdfOptions): Promise<void>
     }
     const x = margin + (usableW - w) / 2;
     const y = margin;
-    pdf.addImage(canvas.toDataURL('image/png'), 'PNG', x, y, w, h);
+    pdf.addImage(canvas.toDataURL('image/jpeg', JPEG_QUALITY), 'JPEG', x, y, w, h);
     pdf.save(opts.filename);
     return;
   }
@@ -129,7 +148,7 @@ export async function exportGanttPdf(opts: ExportGanttPdfOptions): Promise<void>
         ctx.drawImage(canvas, headerSrcX, rowSrcY, headerSrcW, rowSrcH, labelColPx, headerPx, headerSrcW, rowSrcH);
       }
 
-      pdf.addImage(tile.toDataURL('image/png'), 'PNG', margin, margin, usableW, usableH);
+      pdf.addImage(tile.toDataURL('image/jpeg', JPEG_QUALITY), 'JPEG', margin, margin, usableW, usableH);
 
       pdf.setFontSize(7);
       pdf.setTextColor(150);

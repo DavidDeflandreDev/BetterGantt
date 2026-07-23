@@ -5,6 +5,7 @@
 
 import { useState } from 'react';
 import { AnimatePresence } from 'motion/react';
+import { HelpCircle } from 'lucide-react';
 import { SavedProject } from '../types';
 import { useGanttData } from '../hooks/useGanttData';
 import HomeScreen from './HomeScreen';
@@ -17,15 +18,22 @@ import GanttTimeline from './timeline/GanttTimeline';
 import TaskEditorDrawer from './TaskEditorDrawer';
 import ExportModal from './ExportModal';
 import ImportPresetModal from './ImportPresetModal';
+import OnboardingTour from './OnboardingTour';
 
 export default function GanttChart() {
   const [currentScreen, setCurrentScreen] = useState<'accueil' | 'diagramme'>('accueil');
   const [showPrintPreview, setShowPrintPreview] = useState(false);
+  const [showOnboarding, setShowOnboarding] = useState(false);
 
   const gantt = useGanttData();
 
   function goToDiagram() {
     setCurrentScreen('diagramme');
+  }
+
+  function handleLoadDemoProject() {
+    gantt.loadDemoProject();
+    setShowOnboarding(true);
   }
 
   function handleSearchQueryChange(query: string) {
@@ -70,7 +78,7 @@ export default function GanttChart() {
           onImportGanttFile={handleImportGanttFile}
           onSelectRecentProject={handleSelectRecentProject}
           onDeleteRecentProject={gantt.handleDeleteRecentProject}
-          onLoadDemoProject={gantt.loadDemoProject}
+          onLoadDemoProject={handleLoadDemoProject}
         />
         {importPresetModal}
       </>
@@ -138,6 +146,7 @@ export default function GanttChart() {
             onSelectTask={gantt.setSelectedTaskId}
             timelineDates={gantt.timelineDates}
             monthLabels={gantt.monthLabels}
+            isYearGrouped={gantt.effectiveZoom === 'year'}
             todayIndex={gantt.todayIndex}
             visibleTasksCount={gantt.filteredTasks.length}
             displayLimit={gantt.displayLimit}
@@ -173,6 +182,7 @@ export default function GanttChart() {
         displayTasks={gantt.filteredTasks}
         taskDepthById={gantt.taskDepthById}
         visibleTasks={gantt.visibleTasks}
+        zoomTier={gantt.effectiveZoom}
         resources={gantt.resources}
         cpmResults={gantt.cpmResults}
         highlightCriticalPath={gantt.highlightCriticalPath}
@@ -181,6 +191,18 @@ export default function GanttChart() {
       />
 
       {importPresetModal}
+
+      {showOnboarding && <OnboardingTour onFinish={() => setShowOnboarding(false)} />}
+
+      {!showOnboarding && (
+        <button
+          onClick={() => setShowOnboarding(true)}
+          className="fixed bottom-5 right-5 z-40 h-11 w-11 rounded-full bg-blue-600 hover:bg-blue-500 text-white shadow-lg flex items-center justify-center cursor-pointer transition-colors"
+          title="Revoir la visite guidée"
+        >
+          <HelpCircle className="h-5 w-5" />
+        </button>
+      )}
     </div>
   );
 }

@@ -7,9 +7,26 @@ import { Task, Resource } from '../types';
 import { CPMResult, parseDate, differenceInDays } from '../utils/cpm';
 import { resolveTaskColor, isLightColor } from '../utils/colors';
 import { computeMonthLabels, computeYearLabels, computeTightDateRange, formatTaskDateRange } from '../utils/timeline';
+import { FixedTimelineZoom } from './timeline/constants';
 
-export const PRINT_ROW_HEIGHT = 34;
-export const PRINT_LABEL_COL_WIDTH = 250;
+// Tall enough to comfortably fit two stacked lines (title + resource/duration) at their
+// explicit line-heights below — was tight enough before that on some renderers the two lines
+// together slightly exceeded the row's box, and the overflow got visually painted over by the
+// next row's own background instead of just showing (a "cut in half" look).
+export const PRINT_ROW_HEIGHT = 38;
+export const PRINT_LABEL_COL_WIDTH = 300;
+/** Indentation per nesting level in the label column — kept modest so deeply-nested tasks
+ * (folders 5-6 levels deep) still leave enough horizontal room for the name/resource text
+ * instead of squeezing it down to a sliver. */
+const PRINT_LABEL_INDENT_PER_DEPTH = 10;
+// html2canvas (used to rasterize the export) does not reliably reproduce flexbox vertical
+// centering (`display:flex; justifyContent:center`) — it can render correctly on screen while
+// the captured PDF shows the two label lines overlapping or shifted. Plain block layout with an
+// explicit padding-top is captured identically to what's on screen, so the row uses that instead
+// of flex centering for its two text lines.
+const PRINT_TITLE_LINE_HEIGHT = 14;
+const PRINT_SUBTITLE_LINE_HEIGHT = 12;
+const PRINT_ROW_TEXT_PADDING_TOP = Math.max(0, Math.round((PRINT_ROW_HEIGHT - PRINT_TITLE_LINE_HEIGHT - PRINT_SUBTITLE_LINE_HEIGHT) / 2));
 export const PRINT_TITLE_BAR_HEIGHT = 74;
 export const PRINT_MONTH_BAND_HEIGHT = 22;
 export const PRINT_DAY_BAND_HEIGHT = 32;
@@ -29,10 +46,6 @@ const PRINT_DAY_WIDTH_DETAILED = 30;
 /** Hard ceiling on the CSS-px width the timeline body can reach once it needs to zoom out —
  * bounds how many horizontal tiles a multi-page export can ever produce. */
 const PRINT_MAX_TIMELINE_WIDTH = 1000;
-/** Below this many px/day, weekday letters + day numbers stop being legible — hide them. */
-const MIN_DAY_LABEL_WIDTH = 10;
-/** Below this many px/day, even monthly segments would be too thin to read — group by year. */
-const MIN_MONTH_LABEL_DAY_WIDTH = 2;
 /** A4 usable area ratio (width/height, after an 8mm margin on every side) for each orientation —
  * used so a project with only a handful of rows doesn't get stretched to a needlessly wide
  * timeline just because the flat cap above allows it: matching the page's own proportions keeps
@@ -67,6 +80,10 @@ interface GanttPrintViewProps {
   highlightCriticalPath: boolean;
   taskDepthById: Map<string, number>;
   orientation: 'portrait' | 'landscape';
+  /** The zoom tier currently selected on the main diagram screen — the export mirrors that same
+   * granularity choice (day-level detail, month bands, or year bands) instead of deciding it
+   * independently from whatever pixel width the export happens to end up with. */
+  zoomTier: FixedTimelineZoom;
 }
 
 export default function GanttPrintView({
@@ -78,12 +95,16 @@ export default function GanttPrintView({
   highlightCriticalPath,
   taskDepthById,
   orientation,
+  zoomTier,
 }: GanttPrintViewProps) {
   const dates = computeTightDateRange(tasks);
   const pageAspect = orientation === 'landscape' ? PAGE_ASPECT_LANDSCAPE : PAGE_ASPECT_PORTRAIT;
   const dayWidth = computePrintDayWidth(dates.length, tasks.length, pageAspect);
-  const showDayLabels = dayWidth >= MIN_DAY_LABEL_WIDTH;
-  const useYearLabels = dayWidth < MIN_MONTH_LABEL_DAY_WIDTH;
+  // Granularity mirrors the chosen zoom tier: 'jour'/'semaine' still show the day-by-day band,
+  // 'année' groups the top band by year instead of by month — the pixel width above is only
+  // about fitting the page, this is about what level of date detail actually gets labeled.
+  const showDayLabels = zoomTier === 'day' || zoomTier === 'week';
+  const useYearLabels = zoomTier === 'year';
   const monthLabels = useYearLabels ? computeYearLabels(dates) : computeMonthLabels(dates);
   const gridWidth = dates.length * dayWidth;
   const timelineWidth = gridWidth + TRAILING_LABEL_SPACE;
@@ -98,7 +119,14 @@ export default function GanttPrintView({
         width: totalWidth,
         background: '#ffffff',
         color: '#0f172a',
-        fontFamily: "ui-sans-serif, system-ui, -apple-system, sans-serif",
+        // html2canvas rasterizes text itself (its own canvas-based text renderer, not the
+        // browser's real text engine) and does not reliably resolve CSS-level generic keywords
+        // like `ui-sans-serif` / `system-ui` / `-apple-system` the same way the live page does —
+        // on screen the browser picks a real OS font and shapes it correctly, but html2canvas can
+        // measure/draw those keyword font names incorrectly, which is exactly the kind of bug
+        // that shows glyphs overlapping ONLY in the exported raster, never in the live preview.
+        // A single, always-available, concrete font name avoids that class of bug entirely.
+        fontFamily: 'Helvetica, Arial, sans-serif',
       }}
     >
       {/* Title bar spans full width, repeats on every exported tile */}
@@ -164,17 +192,22 @@ export default function GanttPrintView({
                   key={t.id}
                   style={{
                     height: PRINT_ROW_HEIGHT,
-                    display: 'flex',
-                    flexDirection: 'column',
-                    justifyContent: 'center',
-                    padding: `0 14px 0 ${14 + depth * 16}px`,
+                    paddingTop: PRINT_ROW_TEXT_PADDING_TOP,
+                    paddingRight: 14,
+                    paddingLeft: 14 + depth * PRINT_LABEL_INDENT_PER_DEPTH,
                     borderBottom: '1px solid #f1f5f9',
                     boxSizing: 'border-box',
+                    // Defensive: even if the two lines below ever run slightly tall for a given
+                    // font, clip them to this row's own box instead of letting them spill into —
+                    // and get visually painted over by — the next row underneath.
+                    overflow: 'hidden',
                   }}
                 >
                   <div
                     style={{
                       fontSize: 11,
+                      lineHeight: `${PRINT_TITLE_LINE_HEIGHT}px`,
+                      height: PRINT_TITLE_LINE_HEIGHT,
                       fontWeight: t.isFolder ? 800 : 600,
                       color: isCritical ? '#e11d48' : '#0f172a',
                       whiteSpace: 'nowrap',
@@ -188,13 +221,16 @@ export default function GanttPrintView({
                   <div
                     style={{
                       fontSize: 9,
+                      lineHeight: `${PRINT_SUBTITLE_LINE_HEIGHT}px`,
+                      height: PRINT_SUBTITLE_LINE_HEIGHT,
                       color: '#64748b',
                       whiteSpace: 'nowrap',
                       overflow: 'hidden',
                       textOverflow: 'ellipsis',
                     }}
                   >
-                    {res ? res.name : 'Non assigné'} · {t.type === 'milestone' ? 'Jalon' : `${t.duration} j`}
+                    {res ? `${res.name} · ` : ''}
+                    {t.type === 'milestone' ? 'Jalon' : `${t.duration} j`}
                   </div>
                 </div>
               );
