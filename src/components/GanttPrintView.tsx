@@ -204,6 +204,7 @@ export default function GanttPrintView({
                   }}
                 >
                   <div
+                    data-pdf-text="true"
                     style={{
                       fontSize: 11,
                       lineHeight: `${PRINT_TITLE_LINE_HEIGHT}px`,
@@ -219,6 +220,7 @@ export default function GanttPrintView({
                     {t.name}
                   </div>
                   <div
+                    data-pdf-text="true"
                     style={{
                       fontSize: 9,
                       lineHeight: `${PRINT_SUBTITLE_LINE_HEIGHT}px`,
@@ -364,6 +366,7 @@ export default function GanttPrintView({
                       />
                       {widthPx > 34 && (
                         <span
+                          data-pdf-text="true"
                           style={{
                             position: 'absolute',
                             inset: 0,
@@ -375,6 +378,7 @@ export default function GanttPrintView({
                             fontWeight: 700,
                             color: textColor,
                           }}
+                          data-pdf-align="right"
                         >
                           {t.progress}%
                         </span>
@@ -395,10 +399,15 @@ export default function GanttPrintView({
                       whiteSpace: 'nowrap',
                     }}
                   >
-                    <span style={{ fontSize: 10, fontWeight: t.isFolder ? 800 : 600, color: isCritical ? '#e11d48' : '#1e293b' }}>
+                    <span
+                      data-pdf-text="true"
+                      style={{ fontSize: 10, fontWeight: t.isFolder ? 800 : 600, color: isCritical ? '#e11d48' : '#1e293b' }}
+                    >
                       {t.name}
                     </span>
-                    <span style={{ fontSize: 9, color: '#94a3b8' }}>· {dateRangeLabel}</span>
+                    <span data-pdf-text="true" style={{ fontSize: 9, color: '#94a3b8' }}>
+                      · {dateRangeLabel}
+                    </span>
                   </div>
                 </div>
               );

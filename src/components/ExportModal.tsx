@@ -10,7 +10,7 @@ import { Task, Resource } from '../types';
 import { CPMResult } from '../utils/cpm';
 import { FixedTimelineZoom } from './timeline/constants';
 import { exportGanttPdf, PdfLayout, PdfOrientation } from '../utils/pdfExport';
-import GanttPrintView, { PRINT_LABEL_COL_WIDTH, PRINT_TOP_BAND_HEIGHT } from './GanttPrintView';
+import GanttPrintView, { PRINT_LABEL_COL_WIDTH, PRINT_TOP_BAND_HEIGHT, PRINT_ROW_HEIGHT } from './GanttPrintView';
 
 interface ExportModalProps {
   open: boolean;
@@ -61,6 +61,7 @@ export default function ExportModal({
         filename: `Gantt_${safeProjectName || 'BetterGantt'}_${layoutLabel}_${orientationLabel}.pdf`,
         labelColWidthPx: PRINT_LABEL_COL_WIDTH,
         headerHeightPx: PRINT_TOP_BAND_HEIGHT,
+        rowHeightPx: PRINT_ROW_HEIGHT,
       });
     } catch (error) {
       console.error('Erreur exportation PDF:', error);
