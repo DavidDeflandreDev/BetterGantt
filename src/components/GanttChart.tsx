@@ -169,6 +169,8 @@ export default function GanttChart() {
                 onDelete={gantt.handleDeleteTask}
                 onClose={() => gantt.setSelectedTaskId(null)}
                 onAutoSchedule={gantt.handleAutoSchedule}
+                onSetParent={gantt.handleSetTaskParent}
+                onAddSubtask={gantt.handleAddSubtask}
               />
             )}
           </AnimatePresence>
@@ -192,7 +194,13 @@ export default function GanttChart() {
 
       {importPresetModal}
 
-      {showOnboarding && <OnboardingTour onFinish={() => setShowOnboarding(false)} />}
+      {showOnboarding && (
+        <OnboardingTour
+          onFinish={() => setShowOnboarding(false)}
+          demoTaskId={(gantt.tasks.find(t => t.parentId) || gantt.tasks[0])?.id}
+          onSelectTask={gantt.setSelectedTaskId}
+        />
+      )}
 
       {!showOnboarding && (
         <button

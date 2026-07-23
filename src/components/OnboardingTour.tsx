@@ -11,6 +11,10 @@ interface TourStep {
   targetId?: string;
   title: string;
   body: string;
+  /** When true, entering this step selects a sample task so its editor drawer is actually open
+   * on screen (rather than just described in the abstract) — the same panel that appears when
+   * a user clicks any task row or bar. */
+  selectTaskOnEnter?: boolean;
 }
 
 const TOUR_STEPS: TourStep[] = [
@@ -40,8 +44,8 @@ const TOUR_STEPS: TourStep[] = [
   },
   {
     targetId: 'gantt-static-sheet-column',
-    title: 'Liste des tâches',
-    body: "Cliquez sur l'œil pour masquer une tâche (écran + PDF), glissez-déposez une ligne pour la réordonner ou changer son dossier parent, et repliez un dossier via son chevron.",
+    title: 'Liste des tâches, et créer un dossier',
+    body: "Cliquez sur l'œil pour masquer une tâche (écran + PDF). Glissez-déposez une tâche sur une autre (au centre de sa ligne) pour la ranger dedans : la tâche cible devient automatiquement un dossier, avec un chevron pour le replier/déplier — comme « Développement » dans ce projet démo. Le bouton en haut à gauche réduit toute la liste, et son bord droit se tire pour l'élargir ou la rétrécir.",
   },
   {
     targetId: 'gantt-panel-scheduler-viewport',
@@ -49,9 +53,15 @@ const TOUR_STEPS: TourStep[] = [
     body: "Cliquez sur une barre ou un jalon pour l'éditer. Chaque dossier et jalon reçoit automatiquement une couleur par famille, déclinée selon la profondeur.",
   },
   {
+    targetId: 'gantt-task-editor-drawer',
+    title: "Éditer une tâche (aperçu en direct)",
+    body: "En cliquant sur une tâche, ce panneau s'ouvre : nom, dates/durée, avancement, couleur, dépendances, ressource assignée, et son dossier parent — vous pouvez y déplacer la tâche dans un autre dossier, ou ajouter une sous-tâche directement (elle deviendra un dossier automatiquement). Glissez le bord supérieur pour l'agrandir, ou fermez-le avec « ✕ ».",
+    selectTaskOnEnter: true,
+  },
+  {
     targetId: 'gantt-sidebar',
     title: 'Panneau latéral',
-    body: "Trois onglets : Diagramme (filtres et raccourcis d'affichage), Jalons (vue dédiée triée par date) et Ressources (équipe assignée aux tâches).",
+    body: "Trois onglets : Diagramme (filtres et raccourcis d'affichage), Jalons (vue dédiée triée par date) et Ressources (équipe assignée aux tâches). Comme la liste des tâches, il se réduit d'un clic et se redimensionne en tirant son bord.",
   },
   {
     title: "C'est tout !",
@@ -110,14 +120,27 @@ function computeCardPosition(rect: DOMRect | null): Position {
 
 interface OnboardingTourProps {
   onFinish: () => void;
+  /** Id of a sample task to select when a step flagged `selectTaskOnEnter` is reached, so its
+   * editor drawer is genuinely open on screen rather than just described. */
+  demoTaskId?: string;
+  onSelectTask?: (id: string) => void;
 }
 
-export default function OnboardingTour({ onFinish }: OnboardingTourProps) {
+export default function OnboardingTour({ onFinish, demoTaskId, onSelectTask }: OnboardingTourProps) {
   const [stepIndex, setStepIndex] = useState(0);
   const [rect, setRect] = useState<DOMRect | null>(null);
   const step = TOUR_STEPS[stepIndex];
   const isFirst = stepIndex === 0;
   const isLast = stepIndex === TOUR_STEPS.length - 1;
+
+  // Some steps point at UI that only exists once a task is selected (the editor drawer) — open
+  // it for them automatically instead of just describing it in the abstract.
+  useEffect(() => {
+    if (step.selectTaskOnEnter && demoTaskId && onSelectTask) {
+      onSelectTask(demoTaskId);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [stepIndex]);
 
   useLayoutEffect(() => {
     function updateRect() {
@@ -127,12 +150,13 @@ export default function OnboardingTour({ onFinish }: OnboardingTourProps) {
     updateRect();
     window.addEventListener('resize', updateRect);
     window.addEventListener('scroll', updateRect, true);
-    // Layout can still be settling (e.g. right after a screen change) — re-measure shortly after.
-    const t = setTimeout(updateRect, 60);
+    // Layout can still be settling (e.g. right after a screen change, or a drawer sliding in
+    // via its own enter animation) — re-measure a few times shortly after instead of just once.
+    const timers = [60, 220, 450].map(delay => setTimeout(updateRect, delay));
     return () => {
       window.removeEventListener('resize', updateRect);
       window.removeEventListener('scroll', updateRect, true);
-      clearTimeout(t);
+      timers.forEach(clearTimeout);
     };
   }, [stepIndex, step.targetId]);
 

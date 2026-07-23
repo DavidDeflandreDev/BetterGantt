@@ -287,10 +287,12 @@ export default function GanttPrintView({
                         boxSizing: 'border-box',
                       }}
                     >
-                      <span style={{ fontSize: 8, color: '#94a3b8', fontWeight: 700 }}>
-                        {['D', 'L', 'M', 'M', 'J', 'V', 'S'][date.getUTCDay()]}
-                      </span>
-                      <span style={{ fontSize: 11, fontWeight: 700, color: '#1e293b' }}>{date.getUTCDate()}</span>
+                      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', transform: 'translateY(-3px)' }}>
+                        <span style={{ fontSize: 8, color: '#94a3b8', fontWeight: 700 }}>
+                          {['D', 'L', 'M', 'M', 'J', 'V', 'S'][date.getUTCDay()]}
+                        </span>
+                        <span style={{ fontSize: 11, fontWeight: 700, color: '#1e293b' }}>{date.getUTCDate()}</span>
+                      </div>
                     </div>
                   );
                 })}

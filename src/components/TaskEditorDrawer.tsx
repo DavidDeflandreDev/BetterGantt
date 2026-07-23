@@ -4,8 +4,10 @@
  */
 
 import { motion } from 'motion/react';
-import { RefreshCw, Trash } from 'lucide-react';
+import { RefreshCw, Trash, FolderPlus } from 'lucide-react';
 import { Task, Resource } from '../types';
+import { isSameOrDescendantOf } from '../utils/taskHierarchy';
+import { useResizablePanel } from '../hooks/useResizablePanel';
 import ColorPicker from './ColorPicker';
 
 interface TaskEditorDrawerProps {
@@ -16,17 +18,55 @@ interface TaskEditorDrawerProps {
   onDelete: (id: string) => void;
   onClose: () => void;
   onAutoSchedule: () => void;
+  onSetParent: (taskId: string, parentId: string | undefined) => void;
+  onAddSubtask: (parentId: string) => void;
 }
 
-export default function TaskEditorDrawer({ task, allTasks, resources, onUpdate, onDelete, onClose, onAutoSchedule }: TaskEditorDrawerProps) {
+export default function TaskEditorDrawer({
+  task,
+  allTasks,
+  resources,
+  onUpdate,
+  onDelete,
+  onClose,
+  onAutoSchedule,
+  onSetParent,
+  onAddSubtask,
+}: TaskEditorDrawerProps) {
+  // A task can't become its own parent, nor the parent of one of its own ancestors/descendants
+  // (that would create a cycle) — filter those out of the picker entirely instead of just
+  // failing silently if picked.
+  const validParentOptions = allTasks.filter(t => !isSameOrDescendantOf(t.id, task.id, allTasks));
+  const { size, isDragging, onDragStart } = useResizablePanel({
+    storageKey: 'gantt_drawer_height',
+    defaultSize: 320,
+    min: 180,
+    max: 640,
+    direction: 'vertical',
+    // The handle sits on the drawer's TOP edge — dragging it up (decreasing clientY) should
+    // grow the drawer, the opposite of the raw pointer delta.
+    invert: true,
+  });
+
   return (
     <motion.div
       initial={{ transform: 'translateY(100%)' }}
       animate={{ transform: 'translateY(0%)' }}
       exit={{ transform: 'translateY(100%)' }}
-      className="bg-slate-850 border-t border-slate-700 shadow-2xl p-5 relative z-20 select-none text-slate-200"
+      className="bg-slate-850 border-t border-slate-700 shadow-2xl relative z-20 select-none text-slate-200 flex flex-col"
+      style={{ height: size }}
       id="gantt-task-editor-drawer"
     >
+      {/* Drag handle: top edge, resizes drawer height */}
+      <div
+        onPointerDown={onDragStart}
+        className="absolute top-0 left-0 -mt-1.5 w-full h-3 cursor-row-resize z-10 flex items-center justify-center group"
+        title="Glisser pour redimensionner"
+      >
+        <div className={`h-1 w-12 rounded-full transition-colors ${isDragging ? 'bg-blue-500' : 'bg-slate-600 group-hover:bg-blue-500/70'}`} />
+      </div>
+
+      <div className="p-5 overflow-y-auto flex-1 min-h-0">
       <div className="flex items-center justify-between mb-4">
         <div className="flex items-center space-x-2">
           <span className="h-6 w-2 bg-blue-500 rounded"></span>
@@ -76,10 +116,13 @@ export default function TaskEditorDrawer({ task, allTasks, resources, onUpdate, 
               value={task.type}
               onChange={e => {
                 const val = e.target.value;
+                // isFolder is intentionally left untouched here — it's always derived from
+                // whether the task actually has children (see withRecomputedFolders), never
+                // from its type, so switching format must not silently un-folder it.
                 if (val === 'milestone') {
-                  onUpdate({ ...task, type: 'milestone', isFolder: false, duration: 1 });
+                  onUpdate({ ...task, type: 'milestone', duration: 1 });
                 } else {
-                  onUpdate({ ...task, type: 'task', isFolder: false, duration: task.duration <= 1 ? 4 : task.duration });
+                  onUpdate({ ...task, type: 'task', duration: task.duration <= 1 ? 4 : task.duration });
                 }
               }}
               className="w-full bg-slate-900 border border-slate-700 text-white rounded px-2.5 py-1.5 focus:outline-blue-500 focus:bg-slate-950"
@@ -186,6 +229,32 @@ export default function TaskEditorDrawer({ task, allTasks, resources, onUpdate, 
             ))}
           </select>
         </div>
+
+        {/* Field group E: Hierarchy — move into/out of a folder, or create a subtask directly */}
+        <div className="space-y-2 md:col-span-2">
+          <label className="block text-slate-400 font-semibold mb-1">
+            Dossier parent {task.isFolder && <span className="text-amber-400 font-bold">(ceci est un dossier)</span>}
+          </label>
+          <select
+            value={task.parentId || ''}
+            onChange={e => onSetParent(task.id, e.target.value || undefined)}
+            className="w-full bg-slate-900 border border-slate-700 text-white rounded px-2.5 py-1.5 focus:outline-blue-500 focus:bg-slate-950"
+          >
+            <option value="">Aucun (tâche à la racine)</option>
+            {validParentOptions.map(t => (
+              <option key={t.id} value={t.id}>{t.name}</option>
+            ))}
+          </select>
+          <button
+            type="button"
+            onClick={() => onAddSubtask(task.id)}
+            className="w-full flex items-center justify-center gap-1.5 text-xs font-bold bg-blue-600/10 hover:bg-blue-600/20 text-blue-400 hover:text-blue-300 px-3 py-1.5 rounded-lg border border-blue-600/20 cursor-pointer"
+            title="Crée une nouvelle tâche à l'intérieur de celle-ci — elle deviendra automatiquement un dossier"
+          >
+            <FolderPlus className="h-3.5 w-3.5" /> Ajouter une sous-tâche
+          </button>
+        </div>
+      </div>
       </div>
     </motion.div>
   );

@@ -4,11 +4,12 @@
  */
 
 import { useState, type DragEvent } from 'react';
-import { Folder, ChevronRight, ChevronDown, ArrowUpToLine, ArrowDownToLine, Eye, EyeOff } from 'lucide-react';
+import { Folder, ChevronRight, ChevronDown, ArrowUpToLine, ArrowDownToLine, Eye, EyeOff, PanelLeftClose, PanelLeftOpen } from 'lucide-react';
 import { Task, Resource } from '../../types';
 import { CPMResult } from '../../utils/cpm';
 import { resolveTaskColor } from '../../utils/colors';
 import { ReorderTarget } from '../../utils/taskHierarchy';
+import { useResizablePanel } from '../../hooks/useResizablePanel';
 import { ROW_HEIGHT } from './constants';
 
 interface TaskSheetColumnProps {
@@ -46,6 +47,13 @@ export default function TaskSheetColumn({
 }: TaskSheetColumnProps) {
   const [draggedId, setDraggedId] = useState<string | null>(null);
   const [dropIndicator, setDropIndicator] = useState<ReorderTarget | null>(null);
+  const { size, collapsed, setCollapsed, isDragging: isResizing, onDragStart } = useResizablePanel({
+    storageKey: 'gantt_tasksheet_width',
+    defaultSize: 384,
+    min: 260,
+    max: 720,
+    direction: 'horizontal',
+  });
 
   function endDrag() {
     setDraggedId(null);
@@ -60,12 +68,10 @@ export default function TaskSheetColumn({
     const rect = e.currentTarget.getBoundingClientRect();
     const ratio = (e.clientY - rect.top) / rect.height;
 
-    let placement: 'before' | 'after' | 'inside';
-    if (t.isFolder) {
-      placement = ratio < 0.25 ? 'before' : ratio > 0.75 ? 'after' : 'inside';
-    } else {
-      placement = ratio < 0.5 ? 'before' : 'after';
-    }
+    // Any row can receive an "inside" drop, not just rows that are already folders — a plain
+    // task has no way to become a folder for the first time otherwise, since isFolder is only
+    // ever derived from actually having a child (see withRecomputedFolders).
+    const placement: 'before' | 'after' | 'inside' = ratio < 0.25 ? 'before' : ratio > 0.75 ? 'after' : 'inside';
 
     setDropIndicator({ id: t.id, placement });
   }
@@ -93,13 +99,38 @@ export default function TaskSheetColumn({
   const isDropStart = dropIndicator && 'edge' in dropIndicator && dropIndicator.edge === 'start';
   const isDropEnd = dropIndicator && 'edge' in dropIndicator && dropIndicator.edge === 'end';
 
+  if (collapsed) {
+    return (
+      <div className="w-8 border-r border-slate-700 bg-slate-900 flex flex-col items-center pt-2 shrink-0" id="gantt-static-sheet-column">
+        <button
+          onClick={() => setCollapsed(false)}
+          title="Afficher la liste des tâches"
+          className="text-slate-400 hover:text-white hover:bg-slate-800 rounded p-1 cursor-pointer"
+        >
+          <PanelLeftOpen className="h-4 w-4" />
+        </button>
+      </div>
+    );
+  }
+
   return (
-    <div className="w-80 md:w-96 border-r border-slate-700 bg-slate-900 flex flex-col select-none shrink-0" id="gantt-static-sheet-column">
+    <div
+      className="relative border-r border-slate-700 bg-slate-900 flex flex-col select-none shrink-0"
+      style={{ width: size }}
+      id="gantt-static-sheet-column"
+    >
       <div className="h-20 bg-slate-800/60 border-b border-slate-700 flex items-end px-3 pb-2 text-[11px] font-bold text-slate-400 tracking-wider gap-2">
         <span className="w-5 shrink-0" />
         <div className="flex-1 flex items-center gap-1 min-w-0">🎯 TITRE DE LA TÂCHE</div>
         <div className="w-14 shrink-0 text-center">⏱️ DURÉE</div>
         <div className="w-11 shrink-0 text-center">👤 RESP.</div>
+        <button
+          onClick={() => setCollapsed(true)}
+          title="Masquer la liste des tâches"
+          className="shrink-0 text-slate-400 hover:text-white hover:bg-slate-700/60 rounded p-1 cursor-pointer mb-0.5"
+        >
+          <PanelLeftClose className="h-3.5 w-3.5" />
+        </button>
       </div>
 
       <div className="flex-1 overflow-y-auto divide-y divide-slate-800/80" id="gantt-static-sheet-rows-container">
@@ -204,7 +235,11 @@ export default function TaskSheetColumn({
                       {t.name}
                     </span>
                     {isCollapsed && <span className="ml-1.5 text-[9px] text-slate-500 font-mono shrink-0">(replié)</span>}
-                    {isDropInside && <span className="ml-1.5 text-[9px] text-blue-400 font-bold shrink-0">→ déposer dedans</span>}
+                    {isDropInside && (
+                      <span className="ml-1.5 text-[9px] text-blue-400 font-bold shrink-0">
+                        {t.isFolder ? '→ déposer dedans' : '→ créer un dossier ici'}
+                      </span>
+                    )}
                   </div>
 
                   <div className={`w-14 shrink-0 text-center text-xs font-mono text-slate-400 ${isHidden ? 'opacity-40' : ''}`}>
@@ -257,6 +292,15 @@ export default function TaskSheetColumn({
             )}
           </>
         )}
+      </div>
+
+      {/* Drag handle: right edge */}
+      <div
+        onPointerDown={onDragStart}
+        className="absolute top-0 right-0 -mr-1 w-2 h-full cursor-col-resize z-10 group"
+        title="Glisser pour redimensionner"
+      >
+        <div className={`h-full w-px mx-auto transition-colors ${isResizing ? 'bg-blue-500 w-0.5' : 'bg-transparent group-hover:bg-blue-500/60'}`} />
       </div>
     </div>
   );

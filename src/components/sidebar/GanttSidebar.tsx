@@ -4,8 +4,10 @@
  */
 
 import { useState } from 'react';
+import { PanelLeftClose, PanelLeftOpen } from 'lucide-react';
 import { Task, Resource } from '../../types';
 import { NewResourceInput } from '../../hooks/useGanttData';
+import { useResizablePanel } from '../../hooks/useResizablePanel';
 import TaskControlsPanel from './TaskControlsPanel';
 import ResourcesPanel from './ResourcesPanel';
 import MilestonesPanel from './MilestonesPanel';
@@ -46,33 +48,67 @@ export default function GanttSidebar({
   onSetCollapseDepth,
 }: GanttSidebarProps) {
   const [activeTab, setActiveTab] = useState<'diagramme' | 'jalons' | 'charges'>('diagramme');
+  const { size, collapsed, setCollapsed, isDragging, onDragStart } = useResizablePanel({
+    storageKey: 'gantt_sidebar_width',
+    defaultSize: 320,
+    min: 220,
+    max: 560,
+    direction: 'horizontal',
+  });
+
+  if (collapsed) {
+    return (
+      <section className="w-8 bg-slate-900 border-r border-slate-700 flex flex-col shrink-0 items-center pt-2" id="gantt-sidebar">
+        <button
+          onClick={() => setCollapsed(false)}
+          title="Afficher le panneau latéral"
+          className="text-slate-400 hover:text-white hover:bg-slate-800 rounded p-1 cursor-pointer"
+        >
+          <PanelLeftOpen className="h-4 w-4" />
+        </button>
+      </section>
+    );
+  }
 
   return (
-    <section className="w-full md:w-80 bg-slate-900 border-r border-slate-700 flex flex-col shrink-0" id="gantt-sidebar">
-      <div className="border-b border-slate-700 bg-slate-800/40 p-2 flex space-x-1 shrink-0">
+    <section
+      className="relative bg-slate-900 border-r border-slate-700 flex flex-col shrink-0 w-full"
+      style={{ width: size, maxWidth: '100%' }}
+      id="gantt-sidebar"
+    >
+      <div className="border-b border-slate-700 bg-slate-800/40 p-2 flex items-center gap-1 shrink-0">
+        <div className="flex-1 flex space-x-1 min-w-0">
+          <button
+            onClick={() => setActiveTab('diagramme')}
+            className={`flex-1 text-center py-2 text-xs font-semibold rounded-lg cursor-pointer transition-colors truncate ${
+              activeTab === 'diagramme' ? 'bg-slate-700 text-white shadow border border-slate-600' : 'text-slate-400 hover:text-white hover:bg-slate-800/50'
+            }`}
+          >
+            Diagramme
+          </button>
+          <button
+            onClick={() => setActiveTab('jalons')}
+            className={`flex-1 text-center py-2 text-xs font-semibold rounded-lg cursor-pointer transition-colors truncate ${
+              activeTab === 'jalons' ? 'bg-slate-700 text-white shadow border border-slate-600' : 'text-slate-400 hover:text-white hover:bg-slate-800/50'
+            }`}
+          >
+            Jalons {milestones.length > 0 ? `(${milestones.length})` : ''}
+          </button>
+          <button
+            onClick={() => setActiveTab('charges')}
+            className={`flex-1 text-center py-2 text-xs font-semibold rounded-lg cursor-pointer transition-colors truncate ${
+              activeTab === 'charges' ? 'bg-slate-700 text-white shadow border border-slate-600' : 'text-slate-400 hover:text-white hover:bg-slate-800/50'
+            }`}
+          >
+            Ressources
+          </button>
+        </div>
         <button
-          onClick={() => setActiveTab('diagramme')}
-          className={`flex-1 text-center py-2 text-xs font-semibold rounded-lg cursor-pointer transition-colors ${
-            activeTab === 'diagramme' ? 'bg-slate-700 text-white shadow border border-slate-600' : 'text-slate-400 hover:text-white hover:bg-slate-800/50'
-          }`}
+          onClick={() => setCollapsed(true)}
+          title="Masquer le panneau latéral"
+          className="shrink-0 text-slate-400 hover:text-white hover:bg-slate-700/60 rounded p-1.5 cursor-pointer"
         >
-          Diagramme
-        </button>
-        <button
-          onClick={() => setActiveTab('jalons')}
-          className={`flex-1 text-center py-2 text-xs font-semibold rounded-lg cursor-pointer transition-colors ${
-            activeTab === 'jalons' ? 'bg-slate-700 text-white shadow border border-slate-600' : 'text-slate-400 hover:text-white hover:bg-slate-800/50'
-          }`}
-        >
-          Jalons {milestones.length > 0 ? `(${milestones.length})` : ''}
-        </button>
-        <button
-          onClick={() => setActiveTab('charges')}
-          className={`flex-1 text-center py-2 text-xs font-semibold rounded-lg cursor-pointer transition-colors ${
-            activeTab === 'charges' ? 'bg-slate-700 text-white shadow border border-slate-600' : 'text-slate-400 hover:text-white hover:bg-slate-800/50'
-          }`}
-        >
-          Ressources
+          <PanelLeftClose className="h-3.5 w-3.5" />
         </button>
       </div>
 
@@ -104,6 +140,15 @@ export default function GanttSidebar({
         {activeTab === 'charges' && (
           <ResourcesPanel tasks={tasks} resources={resources} onAddResource={onAddResource} />
         )}
+      </div>
+
+      {/* Drag handle: right edge */}
+      <div
+        onPointerDown={onDragStart}
+        className="hidden md:block absolute top-0 right-0 -mr-1 w-2 h-full cursor-col-resize z-10 group"
+        title="Glisser pour redimensionner"
+      >
+        <div className={`h-full w-px mx-auto transition-colors ${isDragging ? 'bg-blue-500 w-0.5' : 'bg-transparent group-hover:bg-blue-500/60'}`} />
       </div>
     </section>
   );

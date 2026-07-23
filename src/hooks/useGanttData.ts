@@ -8,7 +8,7 @@ import { Task, Resource, ProjectStats, SavedProject } from '../types';
 import { parseDate, addDays, calculateCPM, autoScheduleTasks, differenceInDays, formatDate } from '../utils/cpm';
 import { parseGanttXml } from '../components/GanttParser';
 import { computeMonthLabels, computeYearLabels, computeScreenDateRange } from '../utils/timeline';
-import { computeDepthMap, buildHierarchicalOrder, countHiddenByCollapse, isSameOrDescendantOf, reorderTask, ReorderTarget } from '../utils/taskHierarchy';
+import { computeDepthMap, buildHierarchicalOrder, countHiddenByCollapse, isSameOrDescendantOf, reorderTask, ReorderTarget, withRecomputedFolders } from '../utils/taskHierarchy';
 import { assignMilestoneColors } from '../utils/milestoneColors';
 import { TimelineZoom, ZOOM_DAY_WIDTH, suggestZoomForSpan } from '../components/timeline/constants';
 
@@ -16,8 +16,12 @@ export const DEFAULT_TASKS: Task[] = [
   { id: 't1', name: 'Études et spécifications', startDate: '2026-06-15', duration: 4, progress: 90, dependencies: [], resourceId: 'r1', color: 'indigo', type: 'task', isFolder: false, selected: true },
   { id: 't2', name: 'Maquettage & Design UI', startDate: '2026-06-18', duration: 3, progress: 60, dependencies: ['t1'], resourceId: 'r3', color: 'pink', type: 'task', isFolder: false, selected: true },
   { id: 't3', name: 'Modélisation base de données', startDate: '2026-06-19', duration: 3, progress: 20, dependencies: ['t1'], resourceId: 'r1', color: 'blue', type: 'task', isFolder: false, selected: true },
-  { id: 't4', name: 'Développement API Backend', startDate: '2026-06-22', duration: 6, progress: 0, dependencies: ['t3'], resourceId: 'r2', color: 'amber', type: 'task', isFolder: false, selected: true },
-  { id: 't5', name: 'Développement Frontend Web', startDate: '2026-06-23', duration: 6, progress: 0, dependencies: ['t2', 't3'], resourceId: 'r3', color: 'emerald', type: 'task', isFolder: false, selected: true },
+  // "Développement" is a folder (isFolder: true) grouping two real children below via parentId —
+  // a worked example of the folder feature right in the demo project, so it's discoverable
+  // without having to build one from scratch first.
+  { id: 't9', name: 'Développement', startDate: '2026-06-22', duration: 7, progress: 0, dependencies: [], color: 'amber', type: 'task', isFolder: true, selected: true },
+  { id: 't4', name: 'Développement API Backend', startDate: '2026-06-22', duration: 6, progress: 0, dependencies: ['t3'], resourceId: 'r2', color: 'amber', type: 'task', isFolder: false, parentId: 't9', selected: true },
+  { id: 't5', name: 'Développement Frontend Web', startDate: '2026-06-23', duration: 6, progress: 0, dependencies: ['t2', 't3'], resourceId: 'r3', color: 'emerald', type: 'task', isFolder: false, parentId: 't9', selected: true },
   { id: 't6', name: 'Intégration & Tests QA', startDate: '2026-06-29', duration: 3, progress: 0, dependencies: ['t4', 't5'], resourceId: 'r2', color: 'violet', type: 'task', isFolder: false, selected: true },
   { id: 't7', name: 'Jalon : Livrable Version Bêta', startDate: '2026-07-02', duration: 1, progress: 0, dependencies: ['t6'], resourceId: 'r1', color: 'rose', type: 'milestone', isFolder: false, selected: true },
   { id: 't8', name: 'Campagne SEO & Marketing', startDate: '2026-07-03', duration: 4, progress: 0, dependencies: ['t7'], resourceId: 'r4', color: 'cyan', type: 'task', isFolder: false, selected: true },
@@ -270,6 +274,39 @@ export function useGanttData() {
     setTasks(prev => [...prev, newTask]);
   }
 
+  /** Creates a new child task directly under `parentId` and selects it — the simplest, most
+   * explicit way to "create a folder": the parent has no dedicated folder-toggle of its own,
+   * it simply becomes one (via withRecomputedFolders) the moment it gains this first child. */
+  function handleAddSubtask(parentId: string) {
+    const parent = tasks.find(t => t.id === parentId);
+    const newTask: Task = {
+      id: 'task_' + Date.now().toString(36),
+      name: 'Nouvelle sous-tâche',
+      startDate: parent?.startDate || formatDate(new Date()),
+      duration: 1,
+      progress: 0,
+      dependencies: [],
+      color: parent?.color || 'indigo',
+      type: 'task',
+      parentId,
+      isFolder: false,
+    };
+    setTasks(prev => withRecomputedFolders([...prev, newTask]));
+    setSelectedTaskId(newTask.id);
+  }
+
+  /** Moves a task to a new parent (or to the root, when `parentId` is undefined) directly —
+   * the same underlying data change as dragging it "inside" a row, just reachable from the task
+   * editor for anyone who'd rather pick from a list than drag-and-drop. */
+  function handleSetTaskParent(taskId: string, parentId: string | undefined) {
+    setTasks(prev => {
+      if (taskId === parentId) return prev;
+      if (parentId && isSameOrDescendantOf(parentId, taskId, prev)) return prev; // would create a cycle
+      const next = prev.map(t => (t.id === taskId ? { ...t, parentId } : t));
+      return withRecomputedFolders(next);
+    });
+  }
+
   function handleAddResource(input: NewResourceInput) {
     const palette = ['bg-indigo-500', 'bg-blue-500', 'bg-pink-500', 'bg-amber-500', 'bg-emerald-500', 'bg-violet-500', 'bg-teal-500', 'bg-rose-500'];
     const randomColor = palette[Math.floor(Math.random() * palette.length)];
@@ -284,14 +321,22 @@ export function useGanttData() {
   }
 
   function handleUpdateTask(updated: Task) {
-    setTasks(prev => prev.map(t => (t.id === updated.id ? updated : t)));
+    // Recomputing folders here is cheap insurance: isFolder should always mirror actual parentId
+    // relationships, and this keeps it that way even if a future edit path touches parentId
+    // through this generic update instead of the dedicated handleSetTaskParent.
+    setTasks(prev => withRecomputedFolders(prev.map(t => (t.id === updated.id ? updated : t))));
   }
 
   function handleDeleteTask(id: string) {
     setTasks(prev =>
-      prev
-        .filter(t => t.id !== id)
-        .map(t => ({ ...t, dependencies: t.dependencies.filter(dep => dep !== id) }))
+      withRecomputedFolders(
+        prev
+          .filter(t => t.id !== id)
+          // A deleted folder's children move up to become its own parent's children instead of
+          // disappearing along with it.
+          .map(t => (t.parentId === id ? { ...t, parentId: prev.find(p => p.id === id)?.parentId } : t))
+          .map(t => ({ ...t, dependencies: t.dependencies.filter(dep => dep !== id) }))
+      )
     );
     if (selectedTaskId === id) setSelectedTaskId(null);
   }
@@ -561,6 +606,8 @@ export function useGanttData() {
     setHighlightCriticalPath,
 
     handleAddTask,
+    handleAddSubtask,
+    handleSetTaskParent,
     handleAddResource,
     handleUpdateTask,
     handleDeleteTask,
